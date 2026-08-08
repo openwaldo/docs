@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the OpenWALDO Markdown book as multi-page HTML or one PDF."""
+"""Build the OpenWALDO quickstarts as HTML pages and standalone PDFs."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ class DiagramEdge:
 
 
 def parse_mermaid(source: str) -> tuple[str, list[DiagramNode], list[DiagramEdge]]:
-    """Parse the deliberately small flowchart/state subset used by this book."""
+    """Parse the deliberately small flowchart/state subset used by the guides."""
     nodes: OrderedDict[str, DiagramNode] = OrderedDict()
     edges: list[DiagramEdge] = []
     lines = [line.strip() for line in source.splitlines() if line.strip()]
@@ -348,13 +348,13 @@ def build_html() -> Path:
         pager += (f'<a href="{prefix}{previous[1].relative_to(SOURCE).with_suffix(".html").as_posix()}">← {html.escape(previous[0])}</a>' if previous else "<span></span>")
         pager += (f'<a href="{prefix}{following[1].relative_to(SOURCE).with_suffix(".html").as_posix()}">{html.escape(following[0])} →</a>' if following else "<span></span>")
         pager += "</div>"
-        document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} — The OpenWALDO Book</title><link rel="stylesheet" href="{prefix}assets/book.css"></head><body><div class="layout"><nav><strong>The OpenWALDO Book</strong>{local_nav}</nav><main>{markdown_html(path.read_text(encoding='utf-8'))}{pager}</main></div></body></html>"""
+        document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} - OpenWALDO Quickstarts</title><link rel="stylesheet" href="{prefix}assets/quickstarts.css"></head><body><div class="layout"><nav><strong>OpenWALDO Quickstarts</strong>{local_nav}</nav><main>{markdown_html(path.read_text(encoding='utf-8'))}{pager}</main></div></body></html>"""
         output.write_text(document, encoding="utf-8")
     assets = destination / "assets"
     assets.mkdir()
-    (assets / "book.css").write_text(CSS, encoding="utf-8")
+    (assets / "quickstarts.css").write_text(CSS, encoding="utf-8")
     index = destination / "index.html"
-    index.write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=introduction.html"><title>The OpenWALDO Book</title><a href="introduction.html">Open the book</a>', encoding="utf-8")
+    index.write_text('<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=quickstarts/models.html"><title>OpenWALDO Quickstarts</title><a href="quickstarts/models.html">Open the training quickstart</a>', encoding="utf-8")
     return index
 
 
@@ -368,10 +368,10 @@ def pdf_markup(value: str) -> str:
 
 
 def build_pdf(
-    selected_chapters: list[tuple[str, Path]] | None = None,
-    destination: Path | None = None,
-    book_title: str = "The OpenWALDO Book",
-    subtitle: str = "Auditable training data, provenance, and model workflows",
+    selected_chapters: list[tuple[str, Path]],
+    destination: Path,
+    book_title: str,
+    subtitle: str,
 ) -> Path:
     try:
         from reportlab.lib import colors
@@ -388,8 +388,6 @@ def build_pdf(
     except ImportError as error:
         raise SystemExit("PDF generation requires ReportLab. Run `make setup` first.") from error
 
-    selected_chapters = selected_chapters or chapters()
-    destination = destination or OUTPUT / "pdf" / "openwaldo-book.pdf"
     destination.parent.mkdir(parents=True, exist_ok=True)
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="BookTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=30, leading=35, textColor=colors.HexColor("#126e82"), alignment=TA_CENTER, spaceAfter=16))
@@ -557,12 +555,10 @@ def build_pdf(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("format", choices=("html", "pdf", "all", "model-guide", "contributor-guide", "quickstarts"))
+    parser.add_argument("format", choices=("html", "model-guide", "contributor-guide", "quickstarts"))
     args = parser.parse_args()
-    if args.format in {"html", "all"}:
-        print(f"wrote HTML book: {build_html()}")
-    if args.format in {"pdf", "all"}:
-        print(f"wrote PDF book: {build_pdf()}")
+    if args.format == "html":
+        print(f"wrote HTML quickstarts: {build_html()}")
     if args.format in {"model-guide", "quickstarts"}:
         model_path = SOURCE / "quickstarts" / "models.md"
         result = build_pdf(

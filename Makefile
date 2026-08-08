@@ -17,23 +17,21 @@ $(VENV)/.ready: requirements.txt
 setup: $(VENV)/.ready
 
 html: check
-	$(PYTHON) scripts/build_book.py html
+	$(PYTHON) scripts/build_guides.py html
 
-pdf: check
+model-guide: check
 	@if ! $(PDF_PYTHON) -c 'import reportlab' >/dev/null 2>&1; then $(MAKE) setup; fi
-	$(PDF_PYTHON) scripts/build_book.py pdf
+	$(PDF_PYTHON) scripts/build_guides.py model-guide
 
-model-guide: html check
+contributor-guide: check
 	@if ! $(PDF_PYTHON) -c 'import reportlab' >/dev/null 2>&1; then $(MAKE) setup; fi
-	$(PDF_PYTHON) scripts/build_book.py model-guide
+	$(PDF_PYTHON) scripts/build_guides.py contributor-guide
 
-contributor-guide: html check
-	@if ! $(PDF_PYTHON) -c 'import reportlab' >/dev/null 2>&1; then $(MAKE) setup; fi
-	$(PDF_PYTHON) scripts/build_book.py contributor-guide
+pdf: model-guide contributor-guide
 
-quickstarts: model-guide contributor-guide
+quickstarts: html pdf
 
-all: html pdf model-guide contributor-guide
+all: quickstarts
 
 build: all
 

@@ -52,10 +52,9 @@ def main() -> int:
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1
-    print(f"checked {len(pages) - 1} book pages and their local links")
+    print(f"checked {len(pages) - 1} quickstart pages and their local links")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -1,35 +1,33 @@
-# The OpenWALDO Book
+# OpenWALDO Quickstarts
 
-This repository contains the long-form documentation for OpenWALDO: the public
-training-data commons, the `waldo` command-line tool, and the public corpus
-index.
+This repository contains two focused OpenWALDO guides:
 
-Start reading at [Introduction](src/introduction.md), or browse the complete
-[table of contents](src/SUMMARY.md).
+- [Training Quickstart](src/quickstarts/models.md)
+- [Contributor Quickstart](src/quickstarts/contributing.md)
 
 ## Build locally
 
-The source is ordinary Markdown and is useful without a build step. The Makefile
-can produce a multi-page HTML site or a single printable PDF:
+The source is ordinary Markdown and is useful without a build step. The
+Makefile produces HTML pages and one printable PDF per guide:
 
 ```console
-$ make html       # output/html/index.html
-$ make pdf        # output/pdf/openwaldo-book.pdf
-$ make model-guide       # focused model HTML page + PDF
-$ make contributor-guide # focused contributor HTML page + PDF
-$ make quickstarts       # both focused guides
-$ make all        # book and both focused guides
+$ make html              # both HTML pages
+$ make pdf               # both PDFs
+$ make model-guide       # training PDF only
+$ make contributor-guide # contributor PDF only
+$ make quickstarts       # both formats for both guides
+$ make all               # same as make quickstarts
 $ make serve      # HTML at http://localhost:8000
 ```
 
-Focused outputs are written to:
+Outputs are written to:
 
 - `output/html/quickstarts/models.html`
 - `output/html/quickstarts/contributing.html`
 - `output/pdf/openwaldo-model-quickstart.pdf`
 - `output/pdf/openwaldo-contributor-quickstart.pdf`
 
-`make pdf` creates a local `.venv` and installs the pinned ReportLab dependency
+The PDF targets create a local `.venv` and install the pinned ReportLab dependency
 on its first run. HTML generation uses only the Python standard library.
 Generated artifacts and the virtual environment are intentionally ignored by
 Git. Use `make clean` to remove generated HTML and PDF output.
@@ -50,7 +48,7 @@ $ make check
 
 ## Source repositories
 
-This book is maintained alongside:
+These quickstarts are maintained alongside:
 
 - [`openwaldo/waldo`](https://github.com/openwaldo/waldo) — CLI and contracts
 - [`openwaldo/waldo-index`](https://github.com/openwaldo/waldo-index) — public metadata index
