@@ -8,18 +8,49 @@ lookaside objects separate throughout.
 > accurately record. Object hashes prove identity and integrity; they do not
 > prove a license assertion or legal right.
 
-## 1. Install WALDO and prepare the source
+## 1. Compile and install WALDO system-wide
 
 WALDO currently requires Go 1.25 or newer:
 
 ```console
 $ git clone https://github.com/openwaldo/waldo.git
 $ cd waldo
-$ go install ./cmd/waldo
-$ WALDO_GOBIN="$(go env GOBIN)"
-$ [ -n "$WALDO_GOBIN" ] || WALDO_GOBIN="$(go env GOPATH)/bin"
-$ export PATH="$WALDO_GOBIN:$PATH"
+$ go build -o ./waldo ./cmd/waldo
+$ sudo install -m 0755 ./waldo /usr/local/bin/waldo
+$ waldo --version
 ```
+
+The commands above are for a regular user. When already operating as root, use:
+
+```console
+# go build -o ./waldo ./cmd/waldo
+# install -m 0755 ./waldo /usr/local/bin/waldo
+```
+
+Both forms install the executable at `/usr/local/bin/waldo`, which is normally
+on the system-wide command path.
+
+## 2. Optional: install for one user and persist PATH
+
+When system-wide installation is unavailable, install beneath your home
+directory:
+
+```console
+$ mkdir -p "$HOME/.local/bin"
+$ go build -o "$HOME/.local/bin/waldo" ./cmd/waldo
+```
+
+Add the following line to your shell startup file, not only to the current
+terminal:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Use `~/.zshrc` for zsh, `~/.bashrc` for bash, or `~/.profile` for a POSIX login
+shell, then start a new terminal and run `waldo --version`.
+
+## 3. Prepare the source
 
 Gather the local files plus the facts a reviewer will need:
 
@@ -33,10 +64,11 @@ Direct ingestion accepts text, Markdown, plain/gzip/zstd JSONL, and Parquet.
 Declarative input profiles can map structured JSON, dialogue, trees, bounded
 text, and a limited XML selector subset.
 
-## 2. Select a writable contributor checkout
+## 4. Select a writable contributor checkout
 
-Do not contribute from the managed `~/.waldo/index` checkout. It is a read-only
-consumer cache. Clone your own checkout and set it as the contributor override:
+On a fresh installation, `config.index` is unset and WALDO uses the managed
+`~/.waldo/index` checkout. Do not contribute from that read-only consumer
+cache. Clone your own checkout and set it as the contributor override:
 
 ```console
 $ git clone https://github.com/openwaldo/waldo-index.git \
@@ -57,7 +89,7 @@ and strictly behind. Dirty, ahead, diverged, detached, or untracked states are
 refused without modification. Resolve those states with normal Git tooling
 before ingestion.
 
-## 3. Configure writable lookaside storage
+## 5. Configure writable lookaside storage
 
 Use the S3 destination and region supplied by the index operator:
 
@@ -78,7 +110,7 @@ available when no WALDO login exists.
 A `file://` lookaside is useful for local end-to-end testing only. Never submit
 local object URLs to the shared public index.
 
-## 4. Dry-run direct ingestion
+## 6. Dry-run direct ingestion
 
 Choose a new destination beneath the contributor checkout:
 
@@ -102,7 +134,7 @@ Use `--text-column` only when Parquet text cannot be inferred uniquely. Use
 `--input-profile <file>` for structured mappings. Profiles are corpus-neutral;
 source-specific acquisition belongs in a fetcher or recipe.
 
-## 5. Ingest and keep the checkout unchanged
+## 7. Ingest and keep the checkout unchanged
 
 Repeat the approved command without `--dry-run`:
 
@@ -122,7 +154,7 @@ purges successful staging copies, and writes a small contribution overlay.
 The command deliberately does **not** modify the Git checkout. Its final output
 names a contribution directory and every proposed write/removal.
 
-## 6. Review and apply the overlay
+## 8. Review and apply the overlay
 
 Inspect the printed contribution directory before copying it:
 
@@ -140,7 +172,7 @@ facts, asserted license, conversion identity, document/token/byte totals, shard
 URLs, SHA-256 values, and that no credentials, local paths, or acquisition
 inventories leaked into Git.
 
-## 7. Verify, sign off, and submit
+## 9. Verify, sign off, and submit
 
 ```console
 $ waldo index show community/example
@@ -167,7 +199,7 @@ does not replace accurate provenance or license review. Push your branch and
 open the index pull request from your fork through the project's normal GitHub
 workflow.
 
-## 8. Alternative: use a reviewed ingest recipe
+## 10. Alternative: use a reviewed ingest recipe
 
 A strict YAML/JSON recipe can own corpus metadata and explicitly run reviewed
 acquisition scripts:
@@ -186,7 +218,7 @@ Recipe execution is explicit trust, not an operating-system sandbox. Review the
 recipe and scripts first. Fetchers acquire local bytes only; they never convert
 canonical shards, upload to lookaside, mutate the index, or train a model.
 
-## 9. Update an existing corpus
+## 11. Update an existing corpus
 
 Normal update audits existing shards and publishes only new record identities:
 

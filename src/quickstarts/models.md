@@ -8,19 +8,47 @@ from a blank architecture and using compatible open weights.
 > forecast the exact corpus selection before starting a run. Never omit the
 > selection unless you intentionally want the entire public index.
 
-## 1. Install WALDO
+## 1. Compile and install WALDO system-wide
 
 WALDO currently requires Go 1.25 or newer.
 
 ```console
 $ git clone https://github.com/openwaldo/waldo.git
 $ cd waldo
-$ go install ./cmd/waldo
-$ WALDO_GOBIN="$(go env GOBIN)"
-$ [ -n "$WALDO_GOBIN" ] || WALDO_GOBIN="$(go env GOPATH)/bin"
-$ export PATH="$WALDO_GOBIN:$PATH"
+$ go build -o ./waldo ./cmd/waldo
+$ sudo install -m 0755 ./waldo /usr/local/bin/waldo
 $ waldo --version
 ```
+
+The commands above are for a regular user. When already operating as root, use:
+
+```console
+# go build -o ./waldo ./cmd/waldo
+# install -m 0755 ./waldo /usr/local/bin/waldo
+```
+
+Both forms install the executable at `/usr/local/bin/waldo`, which is normally
+on the system-wide command path.
+
+## 2. Optional: install for one user and persist PATH
+
+When system-wide installation is unavailable, install beneath your home
+directory:
+
+```console
+$ mkdir -p "$HOME/.local/bin"
+$ go build -o "$HOME/.local/bin/waldo" ./cmd/waldo
+```
+
+Add the following line to your shell startup file, not only to the current
+terminal:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Use `~/.zshrc` for zsh, `~/.bashrc` for bash, or `~/.profile` for a POSIX login
+shell, then start a new terminal and run `waldo --version`.
 
 Models default to `~/.waldo/models`; verified corpus objects default to the
 20 GiB bounded cache at `~/.waldo/cache`. Inspect or change those locations
@@ -34,26 +62,29 @@ $ waldo config set lookaside.cache /fast-disk/waldo-cache
 $ waldo config set lookaside.cache.max-size 100GiB
 ```
 
-## 2. Use the managed public index
+## 3. Use the managed public index
 
 Normal model users do not clone or configure an index:
 
 ```console
-$ waldo config unset index
 $ waldo index list core/common-pile
 $ waldo index show core/common-pile/public-domain-review
 ```
 
-With `index` unset, WALDO clones the public index into the managed, read-only
+On a fresh installation, `config.index` is unset by default. WALDO therefore
+clones the public index into the managed, read-only
 `~/.waldo/index` checkout on first use. Online commands then fetch and
 fast-forward it automatically when safe. `waldo index pull` performs the same
 synchronization explicitly.
+
+If this machine was previously configured for contribution work, return to the
+managed default with `waldo config unset index`.
 
 Relative paths resolve beneath that managed checkout. An omitted selection
 means the entire resolved index, including for `model forecast` and
 `model train`.
 
-## 3. Check the training plan before creating state
+## 4. Check the training plan before creating state
 
 The small public-domain-review corpus is useful for a first lifecycle run:
 
@@ -68,7 +99,7 @@ declared sizes without downloading object bodies. Forecast recommends a model
 rung and lists only hardware configurations expected to fit. Neither command
 creates model state.
 
-## 4. Select a real backend
+## 5. Select a real backend
 
 ```console
 $ waldo config set model.backend auto
@@ -83,9 +114,81 @@ The explicit `fake` backend is only for deterministic development tests. Its
 artifacts are permanently marked simulated and cannot become real release
 weights.
 
-## 5. Build a small model from scratch
+## 6. Recommended: define training with a compose
 
-Initialize an immutable architecture, then train it on the inspected selection:
+A model compose is the primary reproducible training interface. It pins the
+architecture, ordered corpus stages, objective, tokenizer, and training
+parameters in strict YAML or JSON. Create `model.yaml`:
+
+```yaml
+kind: waldo-model-compose
+schema: 1
+
+architecture:
+  family: decoder-transformer
+  context_tokens: 512
+  vocabulary_size: 259
+  hidden_size: 384
+  intermediate_size: 1024
+  layers: 6
+  attention_heads: 6
+  key_value_heads: 2
+  tie_embeddings: true
+  parameter_dtype: bfloat16
+  tokenizer:
+    name: byte
+    revision: builtin-byte-schema-1
+
+stages:
+  - name: pretrain
+    type: pre-training
+    objective: causal-language-modeling
+    corpora:
+      - core/common-pile/public-domain-review
+    parameters:
+      profile: causal-pretrain-v1
+      steps: 1000
+      batch_size: 1
+      sequence_length: 256
+      learning_rate: 0.0003
+      seed: 7
+      checkpoint_every: 100
+      evaluate_every: 100
+```
+
+Forecast the complete declared plan, then run it:
+
+```console
+$ waldo model forecast ./model.yaml
+$ waldo model compose quickstart-compose ./model.yaml
+$ waldo model summary quickstart-compose
+$ waldo model bom quickstart-compose ./quickstart-compose-bom.json
+```
+
+WALDO rejects unknown fields, incomplete architectures, empty corpus
+selections, duplicate stage names, unsupported objectives, and invalid
+parameters before training. It preflights every stage and pins the compose and
+each corpus BOM in a durable transaction. Repeating the same command after an
+interruption resumes verified staged work. Use `--replace` only when
+intentionally replacing an existing model; the old model remains published
+until every stage succeeds.
+
+To continue from compatible pulled weights, add a `base` block. The named base
+is verified and never mutated:
+
+```yaml
+base:
+  model: base-model
+  origin_sha256: <origin-bom-sha256>
+```
+
+Compose files deliberately omit machine-local framework choices. The same file
+can use MLX, PyTorch, or TorchTitan according to `model.backend` on the host.
+
+## 7. Direct training by corpus
+
+Direct training remains useful for a short experiment. Initialize an immutable
+architecture, then train it on the inspected selection:
 
 ```console
 $ waldo model init quickstart-10m --preset 10m
@@ -106,7 +209,7 @@ Built-in presets are `10m`, `35m`, `90m`, `300m`, `1b`, `3b`, `7b`, `13b`,
 `34b`, and `70b`. A larger preset is not automatically better for a fixed data
 or hardware budget - use forecast first.
 
-## 6. Generate with compatible weights
+## 8. Generate with compatible weights
 
 After a complete real run:
 
@@ -120,7 +223,7 @@ models perform raw causal continuation and carry no chat template; they are not
 instruction-tuned assistants. Interactive mode supports `/clear`, `/help`, and
 `/exit`.
 
-## 7. Alternative: start from open weights
+## 9. Alternative: start from open weights
 
 Instead of initializing blank weights, pull a compatible Hugging Face
 Safetensors model:
@@ -143,23 +246,7 @@ Current pull support is intentionally narrow: standard bias-free Llama weights
 using the OpenWALDO byte tokenizer and F32, F16, or BF16 tensors. Incompatible
 models fail before publication rather than being silently converted.
 
-## 8. Use a compose for reproducible stages
-
-Direct `model train` is the shortest path. Use a strict model compose when you
-need a reusable architecture, optional pinned base, ordered corpora, explicit
-steps, batch size, sequence length, learning rate, seed, checkpoint interval,
-or evaluation interval:
-
-```console
-$ waldo model forecast ./model.yaml
-$ waldo model compose composed-model ./model.yaml
-```
-
-The compose describes portable model intent, not a machine-local framework.
-`--replace` keeps the old published model in place until every replacement
-stage completes.
-
-## 9. Export a release
+## 10. Export a release
 
 Model export requires provider disclosure facts:
 
@@ -192,7 +279,7 @@ BOM.
 | Start blank | `waldo model init <name> --preset 10m` |
 | Start from compatible weights | `waldo model pull <name> <source>` |
 | Train one or more selections | `waldo model train <name> <paths...>` |
-| Run a reusable plan | `waldo model compose <name> <file>` |
+| Run the recommended reproducible plan | `waldo model compose <name> <file>` |
 | Inspect lineage | `waldo model summary <name>` / `waldo model bom <name>` |
 | Generate | `waldo model chat <name> [prompt]` |
 | Publish | `waldo model export <name> <directory>` |
