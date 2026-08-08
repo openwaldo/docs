@@ -43,7 +43,7 @@ explicit side effects, small diagrams, and links to prerequisite concepts.
 Before submitting:
 
 ```console
-$ mdbook build
+$ make all
 $ git diff --check
 ```
 
@@ -60,4 +60,3 @@ $ git commit -s -m "Describe the change"
 
 The sign-off attaches an accountable identity to the contribution. Use your
 real authorship identity and ensure you have the right to submit the work.
-

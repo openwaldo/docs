@@ -9,15 +9,20 @@ Start reading at [Introduction](src/introduction.md), or browse the complete
 
 ## Build locally
 
-The source is ordinary Markdown and is useful without a build step. To render
-the searchable book, install [mdBook](https://rust-lang.github.io/mdBook/) and
-run:
+The source is ordinary Markdown and is useful without a build step. The Makefile
+can produce a multi-page HTML site or a single printable PDF:
 
 ```console
-$ mdbook serve --open
+$ make html       # output/html/index.html
+$ make pdf        # output/pdf/openwaldo-book.pdf
+$ make all        # both formats
+$ make serve      # HTML at http://localhost:8000
 ```
 
-The generated site is written to `book/`, which is intentionally ignored.
+`make pdf` creates a local `.venv` and installs the pinned ReportLab dependency
+on its first run. HTML generation uses only the Python standard library.
+Generated artifacts and the virtual environment are intentionally ignored by
+Git. Use `make clean` to remove generated HTML and PDF output.
 
 Run the dependency-free content checks with:
 
