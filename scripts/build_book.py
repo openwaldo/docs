@@ -568,9 +568,9 @@ def main() -> int:
     if args.format in {"model-guide", "quickstarts"}:
         model_path = SOURCE / "quickstarts" / "models.md"
         result = build_pdf(
-            [("Use and Build Models", model_path)],
+            [("Training Quickstart", model_path)],
             OUTPUT / "pdf" / "openwaldo-model-quickstart.pdf",
-            "OpenWALDO Model Quickstart",
+            "OpenWALDO Training Quickstart",
             "Use open weights or build a provenance-linked model from scratch",
         )
         print(f"wrote model quickstart PDF: {result}")

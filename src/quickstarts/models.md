@@ -1,4 +1,4 @@
-# Use and Build Models
+# Training Quickstart
 
 This guide is the shortest safe path from a WALDO installation to a local
 model, a recorded training run, and a portable release. It covers both starting

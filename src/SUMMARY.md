@@ -6,7 +6,7 @@
 
 # Focused quickstarts
 
-- [Use and Build Models](quickstarts/models.md)
+- [Training Quickstart](quickstarts/models.md)
 - [Contribute Training Data](quickstarts/contributing.md)
 
 # Getting started
