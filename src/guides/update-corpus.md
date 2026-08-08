@@ -6,8 +6,8 @@ authoritatively rebuild all shards.
 ## Append and deduplicate
 
 ```console
-$ waldo index update ./new-input science/example/example.yaml --dry-run
-$ waldo index update ./new-input science/example/example.yaml
+$ waldo index update ./new-input /path/to/waldo-index/science/example/example.yaml --dry-run
+$ waldo index update ./new-input /path/to/waldo-index/science/example/example.yaml
 ```
 
 Normal update audits existing shards and seeds their exact record identities
@@ -20,7 +20,7 @@ facts must be recorded. A recipe remains the complete owner of its metadata.
 ## Authoritative rebuild
 
 ```console
-$ waldo index update ./complete-input science/example/example.yaml \
+$ waldo index update ./complete-input /path/to/waldo-index/science/example/example.yaml \
     --rebuild-shards --dry-run
 ```
 
@@ -38,4 +38,3 @@ navigation changes before committing.
 
 Old lookaside objects are not automatically deleted. Historical Git revisions,
 other indexes, or exported BOMs may still reference them.
-

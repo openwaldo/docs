@@ -15,7 +15,7 @@ flowchart LR
 ## Direct input
 
 ```console
-$ waldo index ingest ./input category/name \
+$ waldo index ingest ./input /path/to/waldo-index/category/name \
     --title "Corpus title" \
     --description "What this corpus contains." \
     --license CC-BY-4.0 \
@@ -54,8 +54,8 @@ steps:
 ```
 
 ```console
-$ waldo index ingest ./recipes/example.yaml category/example --dry-run
-$ waldo index ingest ./recipes/example.yaml category/example
+$ waldo index ingest ./recipes/example.yaml /path/to/waldo-index/category/example --dry-run
+$ waldo index ingest ./recipes/example.yaml /path/to/waldo-index/category/example
 ```
 
 Recipe execution is explicit trust, not an OS sandbox. Commands run directly,
@@ -65,7 +65,9 @@ hashes, rechecks them after execution, probes only regular non-symlink outputs,
 and owns everything from conversion onward.
 
 Recipes own corpus metadata and reject metadata flags. Fetchers never mutate an
-index, upload objects, or train models.
+index, upload objects, or train models. A logical destination is valid when the
+current directory is already inside its checkout; otherwise pass an absolute or
+`./` destination so WALDO can discover the checkout.
 
 ## Failure and recovery
 
@@ -76,5 +78,6 @@ plan. The contribution overlay is written only after every referenced remote
 object is verified.
 
 Review the diff, verify the new path, stage only the printed overlay, and commit
-with DCO sign-off.
-
+with DCO sign-off. The checkout is unchanged when ingestion finishes: inspect
+the contribution root printed by WALDO, then explicitly copy its contents over
+the checkout before reviewing the Git diff.

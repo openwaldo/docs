@@ -17,6 +17,7 @@ $ git -C /tmp/waldo-tour/index add index.yaml
 $ git -C /tmp/waldo-tour/index commit -s -m "Initialize local index"
 $ waldo config set index /tmp/waldo-tour/index
 $ waldo config set lookaside file:///tmp/waldo-tour/lookaside
+$ waldo config set lookaside.cache /tmp/waldo-tour/cache
 ```
 
 `WALDO_CONFIG` isolates the tour from your normal configuration. The index and
@@ -25,7 +26,7 @@ lookaside are separate directories even in this local setup.
 ## Preview and ingest
 
 ```console
-$ waldo index ingest /tmp/waldo-tour/input examples/tour \
+$ waldo index ingest /tmp/waldo-tour/input /tmp/waldo-tour/index/examples/tour \
     --title "Local tour" \
     --description "Two documents used by the WALDO documentation tour." \
     --license CC0-1.0 \
@@ -34,21 +35,27 @@ $ waldo index ingest /tmp/waldo-tour/input examples/tour \
     --dry-run
 ```
 
-Review the detected inputs, adapter, record count, and destination. Then repeat
-without `--dry-run`. WALDO will report conversion, audit, publication, and the
-metadata overlay paths.
+Review the detected inputs, adapter, record count, and destination. Ingestion
+uses an absolute destination because this shell is not inside the checkout.
+Then repeat without `--dry-run`. WALDO will report conversion, audit,
+publication, and the metadata overlay paths.
 
 ```console
-$ waldo index ingest /tmp/waldo-tour/input examples/tour \
+$ waldo index ingest /tmp/waldo-tour/input /tmp/waldo-tour/index/examples/tour \
     --title "Local tour" \
     --description "Two documents used by the WALDO documentation tour." \
     --license CC0-1.0 \
     --source https://example.invalid/waldo-tour \
     --source-category public-dataset
+$ cp -R -- /path/printed/as/contribution/. /tmp/waldo-tour/index/
 $ git -C /tmp/waldo-tour/index diff --check
 $ git -C /tmp/waldo-tour/index add .
 $ git -C /tmp/waldo-tour/index commit -s -m "Add local tour corpus"
 ```
+
+Replace `/path/printed/as/contribution` with the contribution path in WALDO's
+output. Inspect that staged tree before copying it. Even for a local lookaside,
+WALDO deliberately leaves application of the metadata overlay explicit.
 
 ## Inspect and verify
 
