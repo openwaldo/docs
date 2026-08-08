@@ -399,7 +399,7 @@ def build_pdf(
     styles.add(ParagraphStyle(name="Chapter2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=16, leading=20, textColor=colors.HexColor("#18212a"), spaceBefore=15, spaceAfter=7, keepWithNext=True))
     styles.add(ParagraphStyle(name="Chapter3", parent=styles["Heading3"], fontName="Helvetica-Bold", fontSize=12, leading=15, spaceBefore=11, spaceAfter=5, keepWithNext=True))
     styles.add(ParagraphStyle(name="BookBody", parent=styles["BodyText"], fontSize=9.5, leading=14, spaceAfter=7))
-    styles.add(ParagraphStyle(name="BookBullet", parent=styles["BookBody"], leftIndent=14, firstLineIndent=-7, bulletIndent=4))
+    styles.add(ParagraphStyle(name="BookBullet", parent=styles["BookBody"], leftIndent=14, firstLineIndent=-7, bulletIndent=4, spaceAfter=1))
     styles.add(ParagraphStyle(name="BookQuote", parent=styles["BookBody"], leftIndent=10, rightIndent=10, borderPadding=8, backColor=colors.HexColor("#f4f7f8"), textColor=colors.HexColor("#394854"), spaceBefore=4, spaceAfter=10))
     styles.add(ParagraphStyle(name="BookCode", parent=styles["Code"], fontName="Courier", fontSize=6.7, leading=9, leftIndent=7, rightIndent=7, borderColor=colors.HexColor("#dce3e8"), borderWidth=.5, borderPadding=6, backColor=colors.HexColor("#f4f7f8"), spaceBefore=4, spaceAfter=8))
 
@@ -500,8 +500,6 @@ def build_pdf(
                 if language == "mermaid":
                     story.extend([Spacer(1, 5), pdf_diagram("\n".join(code), page_width - 2 * margin), Spacer(1, 8)])
                 else:
-                    label = language.upper() if language else "Example"
-                    story.append(Paragraph(label, styles["Chapter3"]))
                     story.append(XPreformatted(html.escape("\n".join(code)), styles["BookCode"]))
                 position += 1
                 continue
@@ -535,7 +533,7 @@ def build_pdf(
                 content = bullet.group(1) if bullet else numbered.group(2)
                 story.extend([
                     Paragraph(pdf_markup(content), styles["BookBullet"], bulletText=marker),
-                    Spacer(1, 2),
+                    Spacer(1, 1),
                 ])
             elif line.startswith("> "):
                 flush()

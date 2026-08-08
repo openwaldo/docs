@@ -30,26 +30,6 @@ The commands above are for a regular user. When already operating as root, use:
 Both forms install the executable at `/usr/local/bin/waldo`, which is normally
 on the system-wide command path.
 
-## 2. Optional: install for one user and persist PATH
-
-When system-wide installation is unavailable, install beneath your home
-directory:
-
-```console
-$ mkdir -p "$HOME/.local/bin"
-$ go build -o "$HOME/.local/bin/waldo" ./cmd/waldo
-```
-
-Add the following line to your shell startup file, not only to the current
-terminal:
-
-```sh
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Use `~/.zshrc` for zsh, `~/.bashrc` for bash, or `~/.profile` for a POSIX login
-shell, then start a new terminal and run `waldo --version`.
-
 Models default to `~/.waldo/models`; verified corpus objects default to the
 20 GiB bounded cache at `~/.waldo/cache`. Inspect or change those locations
 before a large run:
@@ -62,7 +42,7 @@ $ waldo config set lookaside.cache /fast-disk/waldo-cache
 $ waldo config set lookaside.cache.max-size 100GiB
 ```
 
-## 3. Use the managed public index
+## 2. Use the managed public index
 
 Normal model users do not clone or configure an index:
 
@@ -84,7 +64,7 @@ Relative paths resolve beneath that managed checkout. An omitted selection
 means the entire resolved index, including for `model forecast` and
 `model train`.
 
-## 4. Check the training plan before creating state
+## 3. Check the training plan before creating state
 
 The small public-domain-review corpus is useful for a first lifecycle run:
 
@@ -99,7 +79,7 @@ declared sizes without downloading object bodies. Forecast recommends a model
 rung and lists only hardware configurations expected to fit. Neither command
 creates model state.
 
-## 5. Select a real backend
+## 4. Select a real backend
 
 ```console
 $ waldo config set model.backend auto
@@ -114,7 +94,7 @@ The explicit `fake` backend is only for deterministic development tests. Its
 artifacts are permanently marked simulated and cannot become real release
 weights.
 
-## 6. Recommended: define training with a compose
+## 5. Recommended: define training with a compose
 
 A model compose is the primary reproducible training interface. It pins the
 architecture, ordered corpus stages, objective, tokenizer, and training
@@ -185,7 +165,7 @@ base:
 Compose files deliberately omit machine-local framework choices. The same file
 can use MLX, PyTorch, or TorchTitan according to `model.backend` on the host.
 
-## 7. Direct training by corpus
+## 6. Direct training by corpus
 
 Direct training remains useful for a short experiment. Initialize an immutable
 architecture, then train it on the inspected selection:
@@ -209,7 +189,7 @@ Built-in presets are `10m`, `35m`, `90m`, `300m`, `1b`, `3b`, `7b`, `13b`,
 `34b`, and `70b`. A larger preset is not automatically better for a fixed data
 or hardware budget - use forecast first.
 
-## 8. Generate with compatible weights
+## 7. Generate with compatible weights
 
 After a complete real run:
 
@@ -223,7 +203,7 @@ models perform raw causal continuation and carry no chat template; they are not
 instruction-tuned assistants. Interactive mode supports `/clear`, `/help`, and
 `/exit`.
 
-## 9. Alternative: start from open weights
+## 8. Alternative: start from open weights
 
 Instead of initializing blank weights, pull a compatible Hugging Face
 Safetensors model:
@@ -246,7 +226,7 @@ Current pull support is intentionally narrow: standard bias-free Llama weights
 using the OpenWALDO byte tokenizer and F32, F16, or BF16 tensors. Incompatible
 models fail before publication rather than being silently converted.
 
-## 10. Export a release
+## 9. Export a release
 
 Model export requires provider disclosure facts:
 
