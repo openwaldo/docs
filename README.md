@@ -19,6 +19,12 @@ $ mdbook serve --open
 
 The generated site is written to `book/`, which is intentionally ignored.
 
+Run the dependency-free content checks with:
+
+```console
+$ make check
+```
+
 ## Documentation principles
 
 - Document implemented behavior, and label planned behavior.
@@ -34,4 +40,3 @@ This book is maintained alongside:
 - [`openwaldo/waldo`](https://github.com/openwaldo/waldo) — CLI and contracts
 - [`openwaldo/waldo-index`](https://github.com/openwaldo/waldo-index) — public metadata index
 - [`openwaldo/openwaldo.org`](https://github.com/openwaldo/openwaldo.org) — project website
-
