@@ -16,17 +16,21 @@ $ waldo --help
 Add the resolved Go binary directory to your shell startup file for future
 sessions.
 
-## Get the public index
+## Use the public index
 
 ```console
-$ git clone https://github.com/openwaldo/waldo-index.git
-$ waldo config set index "$PWD/waldo-index"
 $ waldo index summary
+$ waldo index list science
 ```
 
-An explicit filesystem path always discovers its enclosing checkout. A logical
-path such as `science/plos` uses the checkout containing the current directory,
-then the configured `index` path.
+No index setup is required for reading. On first use, WALDO clones branch
+`main` from `https://github.com/openwaldo/waldo-index.git` to the managed,
+read-only `~/.waldo/index` checkout using its built-in Go Git client. Later
+read commands fetch and fast-forward it automatically when safe.
+
+Set `config.index` only when you have a separate writable contributor checkout.
+Relative corpus paths then resolve beneath that checkout. Absolute and `~/`
+paths explicitly select another checkout.
 
 ## Inspect machine defaults
 
@@ -49,4 +53,3 @@ $ waldo --json index summary science
 
 Stable result JSON is written to standard output. Progress remains on standard
 error, allowing automation to capture the result without losing visibility.
-

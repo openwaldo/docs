@@ -15,7 +15,7 @@ tests, and isolated operations.
 
 | Key | Meaning | Default/constraint |
 | --- | --- | --- |
-| `index` | Default local index checkout | Unset |
+| `index` | Writable contributor checkout override | Unset; managed `~/.waldo/index` is used for reads |
 | `lookaside` | Writable `s3://` or `file://` URL | Unset |
 | `lookaside.region` | AWS region when not inferred | Unset |
 | `lookaside.workers` | Concurrent completed-shard uploads | 1–32 |
@@ -40,6 +40,10 @@ $ waldo config set lookaside.mirrors https://mirror-a.example https://mirror-b.e
 $ waldo config unset model.backend
 ```
 
+Do not set `index` merely to read the public catalog. When the key is unset,
+WALDO creates and maintains `~/.waldo/index` automatically. Set it to a
+separate checkout only for contribution work or to select another persistent
+index. Relative paths—including `./...`—resolve beneath the selected checkout.
+
 S3 secret keys do not belong in configuration. Use `waldo lookaside login`,
 the AWS default credential chain, or workload roles.
-

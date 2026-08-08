@@ -1,15 +1,22 @@
 # Troubleshooting
 
-## WALDO cannot discover an index
+## WALDO cannot clone or update the managed index
 
-Pass an absolute checkout/subtree/manifest path or configure one:
+Check network access to GitHub, then retry explicitly:
 
 ```console
-$ waldo config set index /absolute/path/to/waldo-index
-$ waldo index summary
+$ waldo index pull
 ```
 
-Logical paths require the current or configured checkout.
+The default public checkout is `~/.waldo/index`. WALDO creates it on first use;
+you should not edit it or use it as an ingest/update destination.
+
+## WALDO refuses to pull an index
+
+WALDO only performs a clean fast-forward. It refuses dirty worktrees,
+local-only commits, divergence, detached HEAD, and missing tracking
+configuration. For a contributor checkout, resolve the Git state yourself and
+retry. Do not repair or replace the managed checkout by ingesting into it.
 
 ## Default verify works but object verification fails
 
@@ -68,6 +75,6 @@ a clearly marked development artifact.
 
 ## A documented command has no handler
 
-`index remove` and `lookaside mirror` are currently reserved placeholders. The
-CLI prints them as planned vocabulary, but they are not operational yet.
-
+`lookaside mirror` is currently a reserved placeholder. The CLI prints it as
+planned vocabulary, but it is not operational yet. Git-shaped `index clone`,
+`fetch`, and `status` commands, and `index remove`, are intentionally absent.

@@ -7,6 +7,8 @@ Most WALDO workflows become simple once four nouns are kept separate.
 The index is a small Git tree. Directory indexes navigate to corpus manifests;
 manifests declare title, source evidence, asserted license, conversion identity,
 counts, and canonical object hashes. Git provides review and revision history.
+WALDO maintains a read-only public checkout at `~/.waldo/index` for consumers;
+contributors select a separate writable checkout with `config.index`.
 
 ## Lookaside: bytes
 
@@ -52,4 +54,3 @@ flowchart TB
 Configuration describes this machine—paths, credentials, caches, and backend
 preferences. It never describes corpus meaning. Corpus facts belong in reviewed
 index metadata and BOMs.
-

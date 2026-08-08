@@ -15,7 +15,8 @@ flowchart LR
 ## Direct input
 
 ```console
-$ waldo index ingest ./input /path/to/waldo-index/category/name \
+$ waldo config set index /path/to/waldo-index
+$ waldo index ingest ./input category/name \
     --title "Corpus title" \
     --description "What this corpus contains." \
     --license CC-BY-4.0 \
@@ -54,8 +55,8 @@ steps:
 ```
 
 ```console
-$ waldo index ingest ./recipes/example.yaml /path/to/waldo-index/category/example --dry-run
-$ waldo index ingest ./recipes/example.yaml /path/to/waldo-index/category/example
+$ waldo index ingest ./recipes/example.yaml category/example --dry-run
+$ waldo index ingest ./recipes/example.yaml category/example
 ```
 
 Recipe execution is explicit trust, not an OS sandbox. Commands run directly,
@@ -65,9 +66,10 @@ hashes, rechecks them after execution, probes only regular non-symlink outputs,
 and owns everything from conversion onward.
 
 Recipes own corpus metadata and reject metadata flags. Fetchers never mutate an
-index, upload objects, or train models. A logical destination is valid when the
-current directory is already inside its checkout; otherwise pass an absolute or
-`./` destination so WALDO can discover the checkout.
+index, upload objects, or train models. Relative destinations resolve beneath
+the contributor checkout selected by `config.index`; they do not depend on the
+current directory. Absolute and `~/` destinations explicitly discover another
+checkout. The managed `~/.waldo/index` checkout cannot be an authoring target.
 
 ## Failure and recovery
 

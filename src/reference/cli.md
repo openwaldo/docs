@@ -4,14 +4,16 @@ WALDO organizes commands by the object being managed. Run
 `waldo <group> <command> --help` for the authoritative help shipped with your
 installed version.
 
-Global options are `--help`, `--version`, and `--json`. Place `--json` before
-the group. Structured results go to stdout and progress to stderr.
+Global options are `--help`, `--version`, and `--json`. Structured results go
+to stdout and progress to stderr. Cobra also provides `waldo completion` for
+Bash, Zsh, Fish, and PowerShell.
 
 ## Index
 
 | Command | Synopsis | Purpose |
 | --- | --- | --- |
 | `init` | `waldo index init <directory>` | Write the smallest schema-1 index into a new/empty directory. |
+| `pull` | `waldo index pull` | Safely fast-forward the selected checkout. |
 | `list` | `waldo index list [path]` | List corpora recursively. |
 | `show` | `waldo index show [path]` | Show navigation or a manifest. |
 | `summary` | `waldo index summary [path]` | Aggregate corpora, licenses, and totals. |
@@ -20,7 +22,16 @@ the group. Structured results go to stdout and progress to stderr.
 | `ingest` | `waldo index ingest <input-or-recipe> <destination> [options]` | Convert, audit, publish, and prepare a contribution. |
 | `update` | `waldo index update <input-or-recipe> <manifest> [options]` | Append new records or rebuild shards. |
 | `export` | `waldo index export <path...> <directory> [options]` | Materialize verified data and `EXPORT.json`. |
-| `remove` | — | Reserved command; not yet implemented. |
+
+Relative paths resolve beneath `config.index`, or beneath managed
+`~/.waldo/index` when it is unset. An omitted selection means the entire
+resolved index. Absolute and `~/` paths explicitly select another checkout.
+Online index consumers automatically run the same safe update policy as
+`index pull`; `index verify --offline` does not access the network.
+
+There are no `index clone`, `fetch`, `status`, or `remove` commands. WALDO
+creates the managed checkout on demand, keeps synchronization behind `pull`,
+and never turns the read-only cache into an authoring workspace.
 
 Ingest direct-input metadata options are `--title`, `--description`,
 `--license`, `--source`, `--source-name`, `--source-category`, `--text-column`,
@@ -66,7 +77,7 @@ selects `.parquet` files recursively.
 | `summary` | `waldo model summary <name>` | Show architecture and run history. |
 | `bom` | `waldo model bom <name> [output.json]` | Emit canonical aggregate provenance. |
 | `forecast` | `waldo model forecast <compose.yaml> \| <index-path...>` | Estimate fitting hardware and duration. |
-| `train` | `waldo model train <name> <index-path...> [--epochs <n>]` | Append a resumable causal-training run. |
+| `train` | `waldo model train <name> [index-path...] [--epochs <n>]` | Append a resumable causal-training run; omission selects the whole index. |
 | `compose` | `waldo model compose <name> <compose-file> [--replace]` | Create/train through ordered portable stages. |
 | `export` | `waldo model export <name> <directory> [options]` | Publish a release package and disclosures. |
 | `chat` | `waldo model chat <name> [prompt] [options]` | Interactive or one-shot generation. |
@@ -95,4 +106,3 @@ BOM disclosure options are `--provider`, `--allow-incomplete`, and `--force`.
 | `get` | `waldo config get [key-or-prefix]` | Discover all keys, a group, or one value. |
 | `set` | `waldo config set <key> <value...>` | Set one machine-local value. |
 | `unset` | `waldo config unset <key>` | Restore one value to its default. |
-

@@ -6,6 +6,7 @@ Start with material you are authorized to process and evidence you can record.
 ## 1. Prepare a checkout and writable lookaside
 
 ```console
+$ git clone https://github.com/openwaldo/waldo-index.git /path/to/your/waldo-index
 $ waldo config set index /path/to/your/waldo-index
 $ waldo config set lookaside s3://contribution-bucket/prefix
 $ waldo config set lookaside.region us-east-2
@@ -16,10 +17,15 @@ Use the writable location and region supplied by the index operator. A
 `file://` lookaside is suitable only for local development; do not submit its
 local object URLs to a shared index.
 
+The managed `~/.waldo/index` checkout is intentionally read-only. Configuring
+your contributor checkout makes relative destinations such as
+`community/example` resolve beneath it. WALDO updates a clean checkout when it
+is safely behind, but refuses dirty, ahead, detached, or diverged states.
+
 ## 2. Probe before writing
 
 ```console
-$ waldo index ingest ./acquired-data /path/to/your/waldo-index/community/example \
+$ waldo index ingest ./acquired-data community/example \
     --title "Example corpus" \
     --description "A small example corpus." \
     --license CC-BY-4.0 \
@@ -39,7 +45,7 @@ canonical Parquet, audits every produced shard, publishes and verifies objects,
 and prepares a small Git metadata overlay. It does not modify the checkout.
 
 ```console
-$ waldo index ingest ./acquired-data /path/to/your/waldo-index/community/example \
+$ waldo index ingest ./acquired-data community/example \
     --title "Example corpus" \
     --description "A small example corpus." \
     --license CC-BY-4.0 \

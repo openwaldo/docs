@@ -38,6 +38,14 @@ Owns schemas, canonical metadata encoding, traversal, inheritance, structural
 verification, summaries, generated navigation, and Git revision identity. It
 does not read model state or run trainers.
 
+It also owns the managed public checkout at `~/.waldo/index`. The internal
+`go-git` client clones it on first use and fetches/fast-forwards the selected
+tracking branch before online index consumption. Updates are allowed only for
+a clean checkout that is strictly behind; dirty, ahead, diverged, and detached
+checkouts or missing tracking configuration are refused. The managed checkout
+is read-only to corpus authoring, while `config.index` selects a separate
+contributor checkout.
+
 ### Record and shard
 
 Owns canonical document identity and representation, license normalization,
@@ -86,4 +94,3 @@ persistence.
 The code lives under `cmd/waldo` and `internal/*`; tests combine unit, E2E, and
 opt-in live integrations. Architectural decisions are captured as numbered ADRs
 in the WALDO source repository.
-

@@ -3,16 +3,20 @@
 This path inspects public metadata, checks one corpus, exports it, and verifies
 the portable result.
 
-## 1. Configure the checkout
+## 1. Use the managed public index
 
 ```console
-$ waldo config set index /path/to/waldo-index
 $ waldo index list science
 $ waldo index show science/plos
 ```
 
-`list` finds corpora recursively. `show` prints either a directory index or a
-single manifest.
+With no configured index, the first command clones the public index into
+`~/.waldo/index`. WALDO automatically fetches and safely fast-forwards that
+checkout before subsequent online reads. `list` finds corpora recursively;
+`show` prints either a directory index or a single manifest.
+
+Omit the path to select the whole index, for example `waldo index summary`.
+Use `waldo index pull` when you want to synchronize explicitly.
 
 ## 2. Choose a verification cost
 
@@ -56,4 +60,3 @@ $ waldo index export core science ./selected \
 
 Patterns are comma-separated shell-style globs. Exclusions take precedence.
 The exact policy is pinned into `EXPORT.json`.
-

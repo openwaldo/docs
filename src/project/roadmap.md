@@ -31,7 +31,6 @@ shipped CLI help and the WALDO repository roadmap for later changes.
 
 ## Reserved but not implemented
 
-- `waldo index remove`
 - `waldo lookaside mirror`
 
 The concepts have intentional command-tree placement, but no operational
@@ -42,6 +41,5 @@ handler in the inspected code.
 The source roadmap identifies operations and transition work after the major
 implementation phases: release hardening, public deployment practice, expanded
 compatibility fixtures, and community operating procedures. A remote index API,
-invisible managed clone, automated PR creation, and fetcher discovery/install
-are deliberate non-goals for the current architecture.
-
+automated PR creation, and fetcher discovery/install are deliberate non-goals
+for the current architecture. The managed public checkout is implemented.
