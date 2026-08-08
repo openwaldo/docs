@@ -1,0 +1,25 @@
+[book]
+title = "The OpenWALDO Book"
+authors = ["OpenWALDO Project contributors"]
+description = "Build, inspect, verify, and use auditable AI training data with OpenWALDO."
+language = "en"
+multilingual = false
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/openwaldo/docs"
+edit-url-template = "https://github.com/openwaldo/docs/edit/main/{path}"
+site-url = "/"
+additional-css = ["theme/openwaldo.css"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+
