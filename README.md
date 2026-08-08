@@ -15,9 +15,19 @@ can produce a multi-page HTML site or a single printable PDF:
 ```console
 $ make html       # output/html/index.html
 $ make pdf        # output/pdf/openwaldo-book.pdf
-$ make all        # both formats
+$ make model-guide       # focused model HTML page + PDF
+$ make contributor-guide # focused contributor HTML page + PDF
+$ make quickstarts       # both focused guides
+$ make all        # book and both focused guides
 $ make serve      # HTML at http://localhost:8000
 ```
+
+Focused outputs are written to:
+
+- `output/html/quickstarts/models.html`
+- `output/html/quickstarts/contributing.html`
+- `output/pdf/openwaldo-model-quickstart.pdf`
+- `output/pdf/openwaldo-contributor-quickstart.pdf`
 
 `make pdf` creates a local `.venv` and installs the pinned ReportLab dependency
 on its first run. HTML generation uses only the Python standard library.

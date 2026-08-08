@@ -290,8 +290,12 @@ def markdown_html(text: str) -> str:
         if line.startswith("> "):
             flush_paragraph()
             close_list()
-            out.append("<blockquote>" + inline(line[2:]) + "</blockquote>")
+            quote = [line[2:]]
             index += 1
+            while index < len(lines) and lines[index].startswith("> "):
+                quote.append(lines[index][2:])
+                index += 1
+            out.append("<blockquote>" + inline(" ".join(quote)) + "</blockquote>")
             continue
         if not line.strip():
             flush_paragraph()
@@ -363,7 +367,12 @@ def pdf_markup(value: str) -> str:
     return value
 
 
-def build_pdf() -> Path:
+def build_pdf(
+    selected_chapters: list[tuple[str, Path]] | None = None,
+    destination: Path | None = None,
+    book_title: str = "The OpenWALDO Book",
+    subtitle: str = "Auditable training data, provenance, and model workflows",
+) -> Path:
     try:
         from reportlab.lib import colors
         from reportlab.lib.enums import TA_CENTER
@@ -379,7 +388,8 @@ def build_pdf() -> Path:
     except ImportError as error:
         raise SystemExit("PDF generation requires ReportLab. Run `make setup` first.") from error
 
-    destination = OUTPUT / "pdf" / "openwaldo-book.pdf"
+    selected_chapters = selected_chapters or chapters()
+    destination = destination or OUTPUT / "pdf" / "openwaldo-book.pdf"
     destination.parent.mkdir(parents=True, exist_ok=True)
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="BookTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=30, leading=35, textColor=colors.HexColor("#126e82"), alignment=TA_CENTER, spaceAfter=16))
@@ -390,6 +400,7 @@ def build_pdf() -> Path:
     styles.add(ParagraphStyle(name="Chapter3", parent=styles["Heading3"], fontName="Helvetica-Bold", fontSize=12, leading=15, spaceBefore=11, spaceAfter=5, keepWithNext=True))
     styles.add(ParagraphStyle(name="BookBody", parent=styles["BodyText"], fontSize=9.5, leading=14, spaceAfter=7))
     styles.add(ParagraphStyle(name="BookBullet", parent=styles["BookBody"], leftIndent=14, firstLineIndent=-7, bulletIndent=4))
+    styles.add(ParagraphStyle(name="BookQuote", parent=styles["BookBody"], leftIndent=10, rightIndent=10, borderPadding=8, backColor=colors.HexColor("#f4f7f8"), textColor=colors.HexColor("#394854"), spaceBefore=4, spaceAfter=10))
     styles.add(ParagraphStyle(name="BookCode", parent=styles["Code"], fontName="Courier", fontSize=6.7, leading=9, leftIndent=7, rightIndent=7, borderColor=colors.HexColor("#dce3e8"), borderWidth=.5, borderPadding=6, backColor=colors.HexColor("#f4f7f8"), spaceBefore=4, spaceAfter=8))
 
     page_width, page_height = A4
@@ -440,13 +451,13 @@ def build_pdf() -> Path:
         canvas.line(margin, 15 * mm, page_width - margin, 15 * mm)
         canvas.setFont("Helvetica", 7.5)
         canvas.setFillColor(colors.HexColor("#5c6975"))
-        canvas.drawString(margin, 10 * mm, "The OpenWALDO Book")
+        canvas.drawString(margin, 10 * mm, book_title)
         canvas.drawRightString(page_width - margin, 10 * mm, str(doc.page))
         canvas.restoreState()
 
     class BookTemplate(BaseDocTemplate):
         def __init__(self, filename: str):
-            super().__init__(filename, pagesize=A4, leftMargin=margin, rightMargin=margin, topMargin=18 * mm, bottomMargin=21 * mm, title="The OpenWALDO Book", author="OpenWALDO Project contributors")
+            super().__init__(filename, pagesize=A4, leftMargin=margin, rightMargin=margin, topMargin=18 * mm, bottomMargin=21 * mm, title=book_title, author="OpenWALDO Project contributors")
             frame = Frame(self.leftMargin, self.bottomMargin, self.width, self.height, id="body")
             self.addPageTemplates(PageTemplate(id="book", frames=frame, onPage=decorate))
 
@@ -455,12 +466,12 @@ def build_pdf() -> Path:
                 level = 0 if flowable.style.name == "Chapter1" else 1
                 self.notify("TOCEntry", (level, flowable.getPlainText(), self.page))
 
-    story = [Spacer(1, 45 * mm), Paragraph("The OpenWALDO Book", styles["BookTitle"]), Paragraph("Auditable training data, provenance, and model workflows", styles["BookSubtitle"]), Spacer(1, 25 * mm), Paragraph("Open Weights. Open Artifacts. Open Licenses.<br/>Open Data. Open Origins.", styles["BookSubtitle"]), PageBreak(), Paragraph("Contents", styles["ContentsTitle"])]
+    story = [Spacer(1, 45 * mm), Paragraph(book_title, styles["BookTitle"]), Paragraph(subtitle, styles["BookSubtitle"]), Spacer(1, 25 * mm), Paragraph("Open Weights. Open Artifacts. Open Licenses.<br/>Open Data. Open Origins.", styles["BookSubtitle"]), PageBreak(), Paragraph("Contents", styles["ContentsTitle"])]
     toc = TableOfContents()
     toc.levelStyles = [ParagraphStyle(name="TOC1", fontName="Helvetica-Bold", fontSize=10, leading=14, leftIndent=0, firstLineIndent=0, spaceBefore=4), ParagraphStyle(name="TOC2", fontName="Helvetica", fontSize=8.5, leading=12, leftIndent=12, firstLineIndent=0)]
     story.extend([toc, PageBreak()])
 
-    for chapter_index, (_, path) in enumerate(chapters()):
+    for chapter_index, (_, path) in enumerate(selected_chapters):
         if chapter_index:
             story.append(PageBreak())
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -522,10 +533,19 @@ def build_pdf() -> Path:
                 flush()
                 marker = "•" if bullet else numbered.group(1) + "."
                 content = bullet.group(1) if bullet else numbered.group(2)
-                story.append(Paragraph(pdf_markup(content), styles["BookBullet"], bulletText=marker))
+                story.extend([
+                    Paragraph(pdf_markup(content), styles["BookBullet"], bulletText=marker),
+                    Spacer(1, 2),
+                ])
             elif line.startswith("> "):
                 flush()
-                story.append(Paragraph(pdf_markup(line[2:]), styles["BookBullet"], bulletText="│"))
+                quote = [line[2:]]
+                position += 1
+                while position < len(lines) and lines[position].startswith("> "):
+                    quote.append(lines[position][2:])
+                    position += 1
+                story.append(Paragraph(pdf_markup(" ".join(quote)), styles["BookQuote"]))
+                continue
             elif not line.strip():
                 flush()
             else:
@@ -539,12 +559,30 @@ def build_pdf() -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("format", choices=("html", "pdf", "all"))
+    parser.add_argument("format", choices=("html", "pdf", "all", "model-guide", "contributor-guide", "quickstarts"))
     args = parser.parse_args()
     if args.format in {"html", "all"}:
         print(f"wrote HTML book: {build_html()}")
     if args.format in {"pdf", "all"}:
         print(f"wrote PDF book: {build_pdf()}")
+    if args.format in {"model-guide", "quickstarts"}:
+        model_path = SOURCE / "quickstarts" / "models.md"
+        result = build_pdf(
+            [("Use and Build Models", model_path)],
+            OUTPUT / "pdf" / "openwaldo-model-quickstart.pdf",
+            "OpenWALDO Model Quickstart",
+            "Use open weights or build a provenance-linked model from scratch",
+        )
+        print(f"wrote model quickstart PDF: {result}")
+    if args.format in {"contributor-guide", "quickstarts"}:
+        contributor_path = SOURCE / "quickstarts" / "contributing.md"
+        result = build_pdf(
+            [("Contribute Training Data", contributor_path)],
+            OUTPUT / "pdf" / "openwaldo-contributor-quickstart.pdf",
+            "OpenWALDO Contributor Quickstart",
+            "Turn acquired files into a verified, reviewable index contribution",
+        )
+        print(f"wrote contributor quickstart PDF: {result}")
     return 0
 
 

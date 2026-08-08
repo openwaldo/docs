@@ -4,6 +4,11 @@
 - [What OpenWALDO Is](what-is-openwaldo.md)
 - [The Mental Model](mental-model.md)
 
+# Focused quickstarts
+
+- [Use and Build Models](quickstarts/models.md)
+- [Contribute Training Data](quickstarts/contributing.md)
+
 # Getting started
 
 - [Install WALDO](getting-started/install.md)
@@ -48,4 +53,3 @@
 - [Repository Map](project/repositories.md)
 - [Contributing](project/contributing.md)
 - [Status and Roadmap](project/roadmap.md)
-
