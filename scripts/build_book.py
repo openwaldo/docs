@@ -5,9 +5,12 @@ from __future__ import annotations
 
 import argparse
 import html
+import math
 import re
 import shutil
 import textwrap
+from collections import OrderedDict, defaultdict, deque
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -18,6 +21,157 @@ OUTPUT = ROOT / "output"
 LINK = re.compile(r"\[([^]]+)\]\(([^)]+)\)")
 FENCE = re.compile(r"^```([^ ]*)\s*$")
 HEADING = re.compile(r"^(#{1,6})\s+(.+)$")
+
+
+@dataclass
+class DiagramNode:
+    identity: str
+    label: str
+    start: bool = False
+
+
+@dataclass
+class DiagramEdge:
+    source: str
+    target: str
+    label: str = ""
+    dotted: bool = False
+
+
+def parse_mermaid(source: str) -> tuple[str, list[DiagramNode], list[DiagramEdge]]:
+    """Parse the deliberately small flowchart/state subset used by this book."""
+    nodes: OrderedDict[str, DiagramNode] = OrderedDict()
+    edges: list[DiagramEdge] = []
+    lines = [line.strip() for line in source.splitlines() if line.strip()]
+    direction = "TB"
+    if lines and lines[0].startswith("flowchart"):
+        direction = lines.pop(0).split(maxsplit=1)[1]
+    elif lines and lines[0].startswith("stateDiagram"):
+        lines.pop(0)
+
+    def remember(identity: str, label: str | None = None) -> str:
+        key = "START" if identity == "[*]" else identity
+        clean = (label or identity).replace(r"\n", "\n")
+        if key not in nodes:
+            nodes[key] = DiagramNode(key, "" if identity == "[*]" else clean, identity == "[*]")
+        elif label:
+            nodes[key].label = clean
+        return key
+
+    endpoint = r'(\[\*\]|[A-Za-z][A-Za-z0-9_]*)(?:\["((?:[^"\\]|\\.)*)"\])?'
+    edge_pattern = re.compile(endpoint + r'\s*(-->|-\.\s*(?:"([^"]*)")?\s*\.->)\s*' + endpoint + r'(?:\s*:\s*(.+))?$')
+    node_pattern = re.compile(endpoint + r"$")
+    for line in lines:
+        if line.startswith(("subgraph ", "classDef ", "class ")) or line == "end":
+            continue
+        match = edge_pattern.match(line)
+        if match:
+            source_id, source_label, operator, edge_label, target_id, target_label, state_label = match.groups()
+            source_key = remember(source_id, source_label)
+            target_key = remember(target_id, target_label)
+            edges.append(DiagramEdge(source_key, target_key, edge_label or state_label or "", operator.startswith("-.")))
+            continue
+        match = node_pattern.match(line)
+        if match:
+            remember(match.group(1), match.group(2))
+    return direction, list(nodes.values()), edges
+
+
+def diagram_label_lines(label: str, node_width: float) -> list[str]:
+    width = max(10, int(node_width / 5.2))
+    lines: list[str] = []
+    for explicit in label.splitlines() or [label]:
+        lines.extend(textwrap.wrap(explicit, width=width, break_long_words=False) or [""])
+    return lines
+
+
+def diagram_layout(source: str, width: float) -> tuple[list[DiagramNode], list[DiagramEdge], dict[str, tuple[float, float]], float, float, float, str]:
+    direction, nodes, edges = parse_mermaid(source)
+    identities = [node.identity for node in nodes]
+    outgoing: dict[str, list[str]] = defaultdict(list)
+    indegree = {identity: 0 for identity in identities}
+    for edge in edges:
+        outgoing[edge.source].append(edge.target)
+        indegree[edge.target] += 1
+
+    layer = {identity: 0 for identity in identities}
+    queue = deque(identity for identity in identities if indegree[identity] == 0)
+    visited: set[str] = set()
+    while queue:
+        current = queue.popleft()
+        visited.add(current)
+        for target in outgoing[current]:
+            layer[target] = max(layer[target], layer[current] + 1)
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                queue.append(target)
+
+    # State diagrams contain an intentional retry edge. Place the remaining
+    # cycle in declaration order while preserving already resolved layers.
+    for identity in identities:
+        if identity not in visited:
+            parents = [edge.source for edge in edges if edge.target == identity and edge.source in visited]
+            layer[identity] = max((layer[parent] + 1 for parent in parents), default=max(layer.values(), default=0) + 1)
+            visited.add(identity)
+
+    groups: dict[int, list[str]] = defaultdict(list)
+    for identity in identities:
+        groups[layer[identity]].append(identity)
+    max_layer = max(groups, default=0)
+    max_group = max((len(group) for group in groups.values()), default=1)
+    node_width = min(150.0, max(88.0, (width - 40.0) / max(1, max_group) - 18.0)) if direction == "TB" else min(145.0, max(72.0, (width - 40.0) / max(1, max_layer + 1) - 18.0))
+    max_label_lines = max((len(diagram_label_lines(node.label, node_width)) for node in nodes if not node.start), default=1)
+    node_height = max(48.0, max_label_lines * 15.0 + 16.0)
+    if direction == "LR":
+        height = max(120.0, max_group * 78.0 + 30.0)
+        x_gap = (width - node_width - 20.0) / max(1, max_layer)
+        positions = {}
+        for level, group in groups.items():
+            for index, identity in enumerate(group):
+                y_gap = height / (len(group) + 1)
+                positions[identity] = (10.0 + node_width / 2 + level * x_gap, (index + 1) * y_gap)
+    else:
+        height = max(160.0, (max_layer + 1) * 78.0 + 22.0)
+        y_gap = (height - node_height - 20.0) / max(1, max_layer)
+        positions = {}
+        for level, group in groups.items():
+            for index, identity in enumerate(group):
+                x_gap = width / (len(group) + 1)
+                positions[identity] = ((index + 1) * x_gap, 10.0 + node_height / 2 + level * y_gap)
+    return nodes, edges, positions, node_width, node_height, height, direction
+
+
+def edge_points(source: tuple[float, float], target: tuple[float, float], node_width: float, node_height: float) -> tuple[float, float, float, float]:
+    dx, dy = target[0] - source[0], target[1] - source[1]
+    distance = math.hypot(dx, dy) or 1.0
+    ux, uy = dx / distance, dy / distance
+    start_offset = min(node_width / (2 * max(abs(ux), .001)), node_height / (2 * max(abs(uy), .001)))
+    end_offset = start_offset
+    return source[0] + ux * start_offset, source[1] + uy * start_offset, target[0] - ux * end_offset, target[1] - uy * end_offset
+
+
+def mermaid_svg(source: str) -> str:
+    width = 900.0
+    nodes, edges, positions, node_width, node_height, height, _ = diagram_layout(source, width)
+    pieces = [f'<svg class="diagram" role="img" viewBox="0 0 {width:.0f} {height:.0f}" xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#126e82"/></marker></defs>']
+    for edge in edges:
+        x1, y1, x2, y2 = edge_points(positions[edge.source], positions[edge.target], node_width, node_height)
+        dash = ' stroke-dasharray="7 5"' if edge.dotted else ""
+        pieces.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="#126e82" stroke-width="2" marker-end="url(#arrow)"{dash}/>')
+        if edge.label:
+            pieces.append(f'<text x="{(x1+x2)/2:.1f}" y="{(y1+y2)/2-7:.1f}" text-anchor="middle" class="edge-label">{html.escape(edge.label)}</text>')
+    for node in nodes:
+        x, y = positions[node.identity]
+        if node.start:
+            pieces.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="9" fill="#126e82"/>')
+            continue
+        pieces.append(f'<rect x="{x-node_width/2:.1f}" y="{y-node_height/2:.1f}" width="{node_width:.1f}" height="{node_height:.1f}" rx="8" fill="#f4f7f8" stroke="#126e82" stroke-width="2"/>')
+        labels = diagram_label_lines(node.label, node_width) or [node.identity]
+        baseline = y - (len(labels) - 1) * 8
+        for offset, label in enumerate(labels):
+            pieces.append(f'<text x="{x:.1f}" y="{baseline + offset*16:.1f}" text-anchor="middle" dominant-baseline="middle">{html.escape(label)}</text>')
+    pieces.append("</svg>")
+    return "".join(pieces)
 
 
 def chapters() -> list[tuple[str, Path]]:
@@ -92,7 +246,7 @@ def markdown_html(text: str) -> str:
                 index += 1
             content = html.escape("\n".join(block))
             if language == "mermaid":
-                out.append(f'<pre class="mermaid">{content}</pre>')
+                out.append(mermaid_svg("\n".join(block)))
             else:
                 out.append(f'<pre><code class="language-{html.escape(language)}">{content}</code></pre>')
             index += 1
@@ -159,7 +313,7 @@ nav strong{display:block;font-size:18px;margin-bottom:18px}nav a{display:block;c
 nav a.active,nav a:hover{color:var(--accent)}main{min-width:0;padding:44px 0 72px}h1{font-size:2.7rem;line-height:1.1;margin:0 0 28px}
 h2{font-size:1.7rem;margin-top:2.3em;border-bottom:1px solid var(--line);padding-bottom:.25em}h3{font-size:1.25rem;margin-top:1.8em}
 a{color:var(--accent)}code{background:var(--wash);padding:.12em .35em;border-radius:4px}pre{overflow:auto;background:#14212a;color:#ecf4f6;padding:18px;border-radius:8px;line-height:1.45}
-pre code{background:none;padding:0}.mermaid{background:var(--wash);color:var(--ink)}table{border-collapse:collapse;width:100%;font-size:.93rem}th,td{text-align:left;vertical-align:top;border:1px solid var(--line);padding:9px 11px}th{background:var(--wash)}
+pre code{background:none;padding:0}.diagram{display:block;width:100%;height:auto;margin:24px 0;background:#fff}.diagram text{font:14px system-ui,-apple-system,sans-serif;fill:var(--ink)}.diagram .edge-label{font-size:12px;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}table{border-collapse:collapse;width:100%;font-size:.93rem}th,td{text-align:left;vertical-align:top;border:1px solid var(--line);padding:9px 11px}th{background:var(--wash)}
 blockquote{border-left:4px solid var(--accent);margin-left:0;padding-left:18px;color:var(--muted)}.pager{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:54px;padding-top:20px}
 @media(max-width:800px){.layout{display:block;padding:0 20px}nav{position:static;height:auto;border:0;border-bottom:1px solid var(--line)}main{padding-top:28px}}
 @media print{nav,.pager{display:none}.layout{display:block;max-width:none}main{padding:0}a{color:inherit}}
@@ -190,7 +344,7 @@ def build_html() -> Path:
         pager += (f'<a href="{prefix}{previous[1].relative_to(SOURCE).with_suffix(".html").as_posix()}">← {html.escape(previous[0])}</a>' if previous else "<span></span>")
         pager += (f'<a href="{prefix}{following[1].relative_to(SOURCE).with_suffix(".html").as_posix()}">{html.escape(following[0])} →</a>' if following else "<span></span>")
         pager += "</div>"
-        document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} — The OpenWALDO Book</title><link rel="stylesheet" href="{prefix}assets/book.css"></head><body><div class="layout"><nav><strong>The OpenWALDO Book</strong>{local_nav}</nav><main>{markdown_html(path.read_text(encoding='utf-8'))}{pager}</main></div><script type="module">import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';mermaid.initialize({{startOnLoad:true,theme:'neutral'}});</script></body></html>"""
+        document = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)} — The OpenWALDO Book</title><link rel="stylesheet" href="{prefix}assets/book.css"></head><body><div class="layout"><nav><strong>The OpenWALDO Book</strong>{local_nav}</nav><main>{markdown_html(path.read_text(encoding='utf-8'))}{pager}</main></div></body></html>"""
         output.write_text(document, encoding="utf-8")
     assets = destination / "assets"
     assets.mkdir()
@@ -216,6 +370,7 @@ def build_pdf() -> Path:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
+        from reportlab.graphics.shapes import Circle, Drawing, Line, Polygon, Rect, String
         from reportlab.platypus import (
             BaseDocTemplate, Frame, PageBreak, PageTemplate, Paragraph,
             Spacer, Table, TableStyle, XPreformatted,
@@ -239,6 +394,45 @@ def build_pdf() -> Path:
 
     page_width, page_height = A4
     margin = 20 * mm
+
+    def pdf_diagram(source: str, width: float):
+        nodes, edges, positions, node_width, node_height, height, _ = diagram_layout(source, width)
+        drawing = Drawing(width, height)
+        accent = colors.HexColor("#126e82")
+        wash = colors.HexColor("#f4f7f8")
+        ink = colors.HexColor("#18212a")
+
+        def invert(point: tuple[float, float]) -> tuple[float, float]:
+            return point[0], height - point[1]
+
+        for edge in edges:
+            x1, y1, x2, y2 = edge_points(positions[edge.source], positions[edge.target], node_width, node_height)
+            x1, y1 = invert((x1, y1))
+            x2, y2 = invert((x2, y2))
+            line = Line(x1, y1, x2, y2, strokeColor=accent, strokeWidth=1.4)
+            if edge.dotted:
+                line.strokeDashArray = [4, 3]
+            drawing.add(line)
+            angle = math.atan2(y2 - y1, x2 - x1)
+            arrow_size = 5.5
+            left = (x2 - arrow_size * math.cos(angle - .55), y2 - arrow_size * math.sin(angle - .55))
+            right = (x2 - arrow_size * math.cos(angle + .55), y2 - arrow_size * math.sin(angle + .55))
+            drawing.add(Polygon([x2, y2, left[0], left[1], right[0], right[1]], fillColor=accent, strokeColor=accent))
+            if edge.label:
+                drawing.add(String((x1 + x2) / 2, (y1 + y2) / 2 + 5, edge.label, textAnchor="middle", fontName="Helvetica", fontSize=6.5, fillColor=ink))
+
+        for node in nodes:
+            x, y = invert(positions[node.identity])
+            if node.start:
+                drawing.add(Circle(x, y, 6, fillColor=accent, strokeColor=accent))
+                continue
+            drawing.add(Rect(x - node_width / 2, y - node_height / 2, node_width, node_height, rx=6, ry=6, fillColor=wash, strokeColor=accent, strokeWidth=1.3))
+            labels = diagram_label_lines(node.label, node_width) or [node.identity]
+            baseline = y + (len(labels) - 1) * 5
+            for offset, label in enumerate(labels):
+                drawing.add(String(x, baseline - offset * 10, label, textAnchor="middle", fontName="Helvetica", fontSize=7.2, fillColor=ink))
+        drawing.hAlign = "CENTER"
+        return drawing
 
     def decorate(canvas, doc) -> None:
         canvas.saveState()
@@ -287,11 +481,17 @@ def build_pdf() -> Path:
                 code: list[str] = []
                 position += 1
                 while position < len(lines) and not lines[position].startswith("```"):
-                    code.extend(textwrap.wrap(lines[position], width=100, subsequent_indent="  ") or [""])
+                    if language == "mermaid":
+                        code.append(lines[position])
+                    else:
+                        code.extend(textwrap.wrap(lines[position], width=100, subsequent_indent="  ") or [""])
                     position += 1
-                label = "Diagram" if language == "mermaid" else (language.upper() if language else "Example")
-                story.append(Paragraph(label, styles["Chapter3"]))
-                story.append(XPreformatted(html.escape("\n".join(code)), styles["BookCode"]))
+                if language == "mermaid":
+                    story.extend([Spacer(1, 5), pdf_diagram("\n".join(code), page_width - 2 * margin), Spacer(1, 8)])
+                else:
+                    label = language.upper() if language else "Example"
+                    story.append(Paragraph(label, styles["Chapter3"]))
+                    story.append(XPreformatted(html.escape("\n".join(code)), styles["BookCode"]))
                 position += 1
                 continue
             heading = HEADING.match(line)
