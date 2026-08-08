@@ -79,7 +79,66 @@ declared sizes without downloading object bodies. Forecast recommends a model
 rung and lists only hardware configurations expected to fit. Neither command
 creates model state.
 
-## 4. Select a real backend
+## 4. Export and filter corpus material by license
+
+Export one recursive selection in native Parquet form:
+
+```console
+$ waldo index export core/common-pile/public-domain-review \
+    ./public-domain-review-export
+$ waldo index bom ./public-domain-review-export
+$ waldo index verify ./public-domain-review-export
+```
+
+Or export multiple selections as canonical JSONL:
+
+```console
+$ waldo index export core/books science/papers \
+    --format jsonl \
+    ./training-jsonl
+```
+
+Every export includes `EXPORT.json`, which pins the resolved index revision,
+manifest and shard hashes, license policy, totals, and hashes of the exported
+files. Native output preserves verified canonical Parquet; JSONL is convenient
+for external tools.
+
+Use repeatable, comma-separated, or globbed license identifiers to materialize
+only the policy you intend:
+
+```console
+$ waldo index export core \
+    --license 'CC0-*' \
+    --license 'CC-BY-*' \
+    --exclude-license 'CC-BY-NC-*' \
+    ./license-filtered-training-data
+$ waldo index bom ./license-filtered-training-data
+$ waldo index verify ./license-filtered-training-data
+```
+
+Exclusions take precedence over inclusions. Matching uses the effective license
+identifiers asserted by the index; hashes and filters do not establish that an
+assertion is legally correct or suitable for your use.
+
+Current `model train` and model-compose stages accept index paths, not export
+directories, and do not expose `--license` flags. To constrain an actual
+training run today, review each selected corpus and name only approved paths:
+
+```console
+$ waldo index show core/common-pile/ubuntu-irc
+$ waldo index show core/common-pile/public-domain-review
+$ waldo model init license-reviewed-10m --preset 10m
+$ waldo model train license-reviewed-10m \
+    core/common-pile/ubuntu-irc \
+    core/common-pile/public-domain-review \
+    --epochs 1
+```
+
+The same rule applies to a compose: put only reviewed paths in each stage's
+`corpora` list. Do not select a broad parent path unless every license beneath
+it is allowed by your training policy.
+
+## 5. Select a real backend
 
 ```console
 $ waldo config set model.backend auto
@@ -94,7 +153,7 @@ The explicit `fake` backend is only for deterministic development tests. Its
 artifacts are permanently marked simulated and cannot become real release
 weights.
 
-## 5. Recommended: define training with a compose
+## 6. Recommended: define training with a compose
 
 A model compose is the primary reproducible training interface. It pins the
 architecture, ordered corpus stages, objective, tokenizer, and training
@@ -165,7 +224,7 @@ base:
 Compose files deliberately omit machine-local framework choices. The same file
 can use MLX, PyTorch, or TorchTitan according to `model.backend` on the host.
 
-## 6. Direct training by corpus
+## 7. Direct training by corpus
 
 Direct training remains useful for a short experiment. Initialize an immutable
 architecture, then train it on the inspected selection:
@@ -189,7 +248,7 @@ Built-in presets are `10m`, `35m`, `90m`, `300m`, `1b`, `3b`, `7b`, `13b`,
 `34b`, and `70b`. A larger preset is not automatically better for a fixed data
 or hardware budget - use forecast first.
 
-## 7. Generate with compatible weights
+## 8. Generate with compatible weights
 
 After a complete real run:
 
@@ -203,7 +262,7 @@ models perform raw causal continuation and carry no chat template; they are not
 instruction-tuned assistants. Interactive mode supports `/clear`, `/help`, and
 `/exit`.
 
-## 8. Alternative: start from open weights
+## 9. Alternative: start from open weights
 
 Instead of initializing blank weights, pull a compatible Hugging Face
 Safetensors model:
@@ -226,7 +285,7 @@ Current pull support is intentionally narrow: standard bias-free Llama weights
 using the OpenWALDO byte tokenizer and F32, F16, or BF16 tensors. Incompatible
 models fail before publication rather than being silently converted.
 
-## 9. Export a release
+## 10. Export a release
 
 Model export requires provider disclosure facts:
 
@@ -255,6 +314,8 @@ BOM.
 | --- | --- |
 | Discover public corpora | `waldo index list` |
 | Refresh the selected index | `waldo index pull` |
+| Export a verified corpus | `waldo index export <paths...> <directory>` |
+| Filter an export by license | `waldo index export <paths...> --license <glob> <directory>` |
 | Estimate hardware and duration | `waldo model forecast <selection>` |
 | Start blank | `waldo model init <name> --preset 10m` |
 | Start from compatible weights | `waldo model pull <name> <source>` |
